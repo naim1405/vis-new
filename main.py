@@ -28,7 +28,7 @@ def do_work(cap):
         # print("🚀 detections:", detections)
         # p2 deep sort tracking returns {id:(x1,y1,x2,y2)}
         tracking_data = tracking(detections, frame)
-        print("🚀 tracking_data : ", tracking_data)
+        # print("🚀 tracking_data : ", tracking_data)
         # 🚀 tracking_data :  {'1': (578, 100, 1106, 1065)}
         # Convert from (x1,y1,x2,y2) to (x,y,w,h) for block3
         tracking_data_xywh = {}
@@ -39,15 +39,13 @@ def do_work(cap):
         input_i = block_process_frame(tracking_data_xywh, frame)
         # print("🚀 input_i : ", len(input_i))
         print("🚀 input_i : ", len(input_i))
-        # with open("logs/output_input_i.txt", "a") as f:
-        #     f.write(str(input_i) + "\n")
-        model_input.append(input_i)
-        if len(model_input) >= 30:
-            # cal p4
-            print("model input ready", model_input)
-            normality_result = predict_normality(model_input)
-            print("normality_result ", normality_result)
-            model_input = []
+
+        # input_i is a dict: {track_id: np.array(seq_len, num_joints, 3)}
+        # Only process when we have ready sequences
+        if len(input_i) > 0:
+            # Predict normality for each tracked person
+            normality_result = predict_normality(input_i)
+            print("🚀 normality_result:", normality_result)
 
 
 do_work(video_cap)

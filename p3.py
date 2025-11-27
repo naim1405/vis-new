@@ -217,7 +217,7 @@ def block3(
                     # fallback: clear buffer
                     buffers[tid].clear()
 
-        print("🚀 ready : ", len(ready))
+        # print("🚀 ready : ", len(ready))
         return ready
 
     def get_buffer():

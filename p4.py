@@ -5,6 +5,7 @@ Load stg_nf_latest.pth and perform inference on pose sequences
 
 import torch
 import numpy as np
+from models.STG_NF.model_pose import STG_NF
 
 
 model_Path = "models/stg_nf_latest.pth"
@@ -36,22 +37,76 @@ class STGCNInference:
             # Load the checkpoint
             checkpoint = torch.load(self.model_path, map_location=self.device)
 
-            # Check if it's a state_dict or full model
-            if isinstance(checkpoint, dict) and "model_state_dict" in checkpoint:
-                # If model class is needed, import it here
-                # from stgcn_model import STGCN
-                # self.model = STGCN(...)
-                # self.model.load_state_dict(checkpoint['model_state_dict'])
-                raise NotImplementedError(
-                    "Model class definition needed. Please provide STGCN architecture."
+            print(f"🚀 Checkpoint type: {type(checkpoint)}")
+            if isinstance(checkpoint, dict):
+                print(f"🚀 Checkpoint keys: {checkpoint.keys()}")
+
+            # Model configuration - inferred from checkpoint structure
+            # Checkpoint analysis:
+            # - Has actnorm (not invconv)
+            # - Layer 0 has no residual, layers 1-7 have residual in block.0
+            # - Only block.0 exists (single block), but expects block.1 -> R=2
+            # - Channels are 2 (from weight shapes)
+            model_config = {
+                "pose_shape": (2, 24, 18),  # (2 for x/y, 24 frames, 18 keypoints)
+                "hidden_channels": 2,  # Hidden channels (from weight: torch.Size([2, 2, 13, 1]))
+                "K": 8,  # Flow steps (8 layers: 0-7)
+                "L": 1,  # Number of levels
+                "actnorm_scale": 1.0,
+                "flow_permutation": "shuffle",  # Uses actnorm, not invconv
+                "flow_coupling": "affine",  # Affine keeps channel size
+                "LU_decomposed": False,
+                "learn_top": False,  # No learn_top_fn in checkpoint
+                "R": 2,  # 2 blocks per layer (need block.0 and block.1)
+                "edge_importance": False,
+                "temporal_kernel_size": 13,  # From tcn layer kernel size
+                "strategy": "uniform",
+                "max_hops": 1,
+                "device": self.device,
+            }
+
+            print(
+                f"🚀 Model config: pose_shape={model_config['pose_shape']}, "
+                f"hidden_channels={model_config['hidden_channels']}, K={model_config['K']}, "
+                f"coupling={model_config['flow_coupling']}"
+            )
+
+            # Create model
+            self.model = STG_NF(**model_config)
+
+            # Load trained weights from checkpoint
+            if isinstance(checkpoint, dict) and "state_dict" in checkpoint:
+                # Use strict=False to allow partial loading (some keys may not match)
+                missing_keys, unexpected_keys = self.model.load_state_dict(
+                    checkpoint["state_dict"], strict=False
+                )
+                if missing_keys:
+                    print(f"⚠️  Missing keys (will be randomly initialized): {len(missing_keys)}")
+                if unexpected_keys:
+                    print(f"⚠️  Unexpected keys (will be ignored): {len(unexpected_keys)}")
+                print(
+                    f"✓ Model loaded (trained for {checkpoint.get('epoch', 'unknown')} epochs)"
                 )
             else:
-                # Assume full model is saved
-                self.model = checkpoint
+                raise ValueError("Checkpoint format not recognized")
 
+            # Move model to device FIRST
             self.model.to(self.device)
-            self.model.eval()  # Set to evaluation mode
-            print(f"ST-GCN model loaded successfully on {self.device}")
+            
+            # Initialize ActNorm layers before setting to eval mode
+            # Create dummy input to initialize
+            self.model.train()  # Temporarily set to train mode for initialization
+            dummy_input = torch.randn(1, 2, 24, 18).to(self.device)
+            dummy_label = torch.ones(1).to(self.device)
+            dummy_score = torch.ones(1).to(self.device)
+            try:
+                with torch.no_grad():
+                    _ = self.model(dummy_input, label=dummy_label, score=dummy_score)
+                print("✓ ActNorm layers initialized")
+            except Exception as e:
+                print(f"⚠️  Warning during ActNorm initialization: {e}")
+            
+            self.model.eval()  # Now set to evaluation mode
 
         except Exception as e:
             print(f"Error loading model: {e}")
@@ -62,39 +117,106 @@ class STGCNInference:
         Perform inference and return normality score.
 
         Args:
-            input_data: Preprocessed input data (numpy array or tensor)
-                       Expected shape: (seq_len, num_joints, 3) for single sample
-                                   or (batch, seq_len, num_joints, 3) for batch
+            input_data: Preprocessed input data
+                       Can be:
+                       - numpy array: (seq_len, num_joints, 3) for single sample
+                       - torch tensor: (seq_len, num_joints, 3) for single sample
+                       - dict: {track_id: np.array(seq_len, num_joints, 3)}
+                       Format: (frames, keypoints, [x, y, confidence])
 
         Returns:
-            normality_score: Float or array of floats representing normality score(s)
+            normality_score: Float or dict of floats representing normality score(s)
                            Higher score = more normal behavior
         """
         with torch.no_grad():
-            # Convert to tensor if numpy array
-            if isinstance(input_data, np.ndarray):
-                input_tensor = torch.from_numpy(input_data).float()
+            # Handle different input types
+            if isinstance(input_data, dict):
+                # Input is {track_id: sequence}
+                results = {}
+                for track_id, sequence in input_data.items():
+                    score = self._predict_single(sequence)
+                    results[track_id] = score
+                return results
             else:
-                input_tensor = input_data.float()
+                # Input is single sequence (numpy array or tensor)
+                return self._predict_single(input_data)
 
-            # Add batch dimension if needed
-            if input_tensor.dim() == 3:
-                input_tensor = input_tensor.unsqueeze(0)  # (1, seq_len, num_joints, 3)
+    def _predict_single(self, input_data):
+        """
+        Predict for a single sequence.
+        
+        Args:
+            input_data: numpy array or tensor (seq_len, num_joints, 3)
+            
+        Returns:
+            normality_score: Float
+        """
+        # Convert to tensor if numpy array
+        if isinstance(input_data, np.ndarray):
+            input_tensor = torch.from_numpy(input_data).float()
+        else:
+            input_tensor = input_data.float()
 
-            # Move to device
-            input_tensor = input_tensor.to(self.device)
+        # Add batch dimension
+        if input_tensor.dim() == 3:
+            input_tensor = input_tensor.unsqueeze(0)  # (1, seq_len, num_joints, 3)
 
-            # Forward pass
-            output = self.model(input_tensor)
+        print(f"🚀 Input tensor shape: {input_tensor.shape}")
 
-            # Convert to normality score
-            normality_score = output.detach().cpu().numpy()
+        # Transform input from (batch, seq_len, num_joints, 3) to (batch, 2, 24, 18)
+        # The model expects: [batch, 2 (x/y), 24 frames, 18 keypoints]
+        batch_size = input_tensor.shape[0]
+        seq_len = input_tensor.shape[1]
 
-            # If single sample, return scalar
-            if normality_score.shape[0] == 1:
-                normality_score = float(normality_score.squeeze())
+        # Select last 24 frames and first 18 keypoints (COCO format)
+        if seq_len < 24:
+            print(
+                f"⚠️  Warning: Only {seq_len} frames available, need 24. Padding with zeros."
+            )
+            # Pad with zeros to reach 24 frames
+            padding = torch.zeros(
+                batch_size, 24 - seq_len, input_tensor.shape[2], 3
+            )
+            input_tensor = torch.cat([input_tensor, padding], dim=1)
+        else:
+            # Take last 24 frames for temporal continuity
+            input_tensor = input_tensor[:, -24:, :, :]
 
-            return normality_score
+        # Take first 18 keypoints (or pad if less)
+        if input_tensor.shape[2] < 18:
+            print(
+                f"⚠️  Warning: Only {input_tensor.shape[2]} keypoints, need 18. Padding."
+            )
+            padding = torch.zeros(batch_size, 24, 18 - input_tensor.shape[2], 3)
+            input_tensor = torch.cat([input_tensor, padding], dim=2)
+        else:
+            input_tensor = input_tensor[:, :, :18, :]
+
+        # Reshape to (batch, 2, 24, 18) - separate x and y coordinates
+        # input_tensor is now (batch, 24, 18, 3) where 3 is [x, y, confidence]
+        x_coords = input_tensor[:, :, :, 0]  # (batch, 24, 18)
+        y_coords = input_tensor[:, :, :, 1]  # (batch, 24, 18)
+
+        # Stack to (batch, 2, 24, 18)
+        model_input = torch.stack([x_coords, y_coords], dim=1)
+
+        print(f"🚀 Model input shape: {model_input.shape}")
+
+        # Move to device
+        model_input = model_input.to(self.device)
+
+        # Forward pass
+        z, nll = self.model(
+            model_input,
+            label=torch.ones(batch_size).to(self.device),
+            score=torch.ones(batch_size).to(self.device),
+        )
+
+        # Convert to normality score (negative log-likelihood, higher = more normal)
+        normality_score = -nll.detach().cpu().numpy()
+
+        # Return scalar for single sample
+        return float(normality_score.squeeze())
 
 
 # Global model instance (initialized once)
