@@ -55,7 +55,7 @@ def do_work(cap):
             # Predict normality for each tracked person
             normality_result = predict_normality(input_i)
             print("🚀 normality_result:", normality_result)
-            
+
             # Separate people by anomaly score
             anomalous_ids = []
             normal_ids = []
@@ -64,46 +64,74 @@ def do_work(cap):
                     anomalous_ids.append(track_id)
                 else:
                     normal_ids.append(track_id)
-            
+
             # Save frame with anomalous people (score < 0)
             if len(anomalous_ids) > 0:
                 anomaly_count += 1
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                 filename = f"anomaly_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(anomalous_ids)}.jpg"
-                
+
                 # Draw red bounding boxes for anomalies
                 annotated_frame = frame.copy()
                 for tid in anomalous_ids:
                     if tid in tracking_data:
                         x1, y1, x2, y2 = tracking_data[tid]
-                        cv2.rectangle(annotated_frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 0, 255), 3)
+                        cv2.rectangle(
+                            annotated_frame,
+                            (int(x1), int(y1)),
+                            (int(x2), int(y2)),
+                            (0, 0, 255),
+                            3,
+                        )
                         score_text = f"ID:{tid} Score:{normality_result[tid]:.2f}"
-                        cv2.putText(annotated_frame, score_text, (int(x1), int(y1)-10), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
-                
+                        cv2.putText(
+                            annotated_frame,
+                            score_text,
+                            (int(x1), int(y1) - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6,
+                            (0, 0, 255),
+                            2,
+                        )
+
                 cv2.imwrite(filename, annotated_frame)
                 print(f"✅ Saved anomaly frame: {filename}")
-            
+
             # Save frame with normal people (score >= 0)
             if len(normal_ids) > 0:
                 normal_count += 1
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                 filename = f"normal_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(normal_ids)}.jpg"
-                
+
                 # Draw green bounding boxes for normal behavior
                 annotated_frame = frame.copy()
                 for tid in normal_ids:
                     if tid in tracking_data:
                         x1, y1, x2, y2 = tracking_data[tid]
-                        cv2.rectangle(annotated_frame, (int(x1), int(y1)), (int(x2), int(y2)), (0, 255, 0), 3)
+                        cv2.rectangle(
+                            annotated_frame,
+                            (int(x1), int(y1)),
+                            (int(x2), int(y2)),
+                            (95, 147, 222),
+                            3,
+                        )
                         score_text = f"ID:{tid} Score:{normality_result[tid]:.2f}"
-                        cv2.putText(annotated_frame, score_text, (int(x1), int(y1)-10), 
-                                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-                
+                        cv2.putText(
+                            annotated_frame,
+                            score_text,
+                            (int(x1), int(y1) - 10),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.6,
+                            (0, 255, 0),
+                            2,
+                        )
+
                 cv2.imwrite(filename, annotated_frame)
                 print(f"✅ Saved normal frame: {filename}")
-    
-    print(f"\n📊 Summary: Processed {frame_count} frames, saved {anomaly_count} anomaly frames and {normal_count} normal frames")
+
+    print(
+        f"\n📊 Summary: Processed {frame_count} frames, saved {anomaly_count} anomaly frames and {normal_count} normal frames"
+    )
 
 
 do_work(video_cap)
