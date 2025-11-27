@@ -4,3 +4,5 @@ __pycache__
 models
 media/
 logs/
+anomaly_frames
+normal_frames
