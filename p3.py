@@ -47,11 +47,17 @@ def block3(
     def _bbox_to_crop(frame, bbox):
         x, y, w, h = bbox
         H, W = frame.shape[:2]
+        # print(f"🚀 _bbox_to_crop - input bbox (x,y,w,h): {bbox}")
+        # print(f"🚀 _bbox_to_crop - frame shape (H,W): ({H},{W})")
         x1 = max(0, int(x))
         y1 = max(0, int(y))
         x2 = min(W, int(x + w))
         y2 = min(H, int(y + h))
+        # print(
+        #     f"🚀 _bbox_to_crop - calculated coords (x1,y1,x2,y2): ({x1},{y1},{x2},{y2})"
+        # )
         crop = frame[y1:y2, x1:x2].copy()
+        # print(f"🚀 _bbox_to_crop - crop shape: {crop.shape}")
         return crop, (x1, y1, x2, y2)
 
     def _mediapipe_keypoints_from_crop(crop, bbox):
@@ -60,6 +66,10 @@ def block3(
         if mp_pipe is None:
             return None
 
+        # print(f"🚀 _mediapipe_keypoints - crop shape: {crop.shape}, bbox: {bbox}")
+        if crop.size == 0:
+            # print(f"🚀 ERROR: crop is empty! Cannot process.")
+            return None
         img = cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
         results = mp_pipe.process(img)
         if not results.pose_landmarks:
@@ -170,42 +180,40 @@ def block3(
                                 (num_joints - kps.shape[0], 3), dtype=np.float32
                             )
                             kps_use = np.vstack([kps, pad])
-                            print(
-                                "🚀 if else: ",
-                            )
+                            # print("🚀 if else: ")
                     else:
                         kps_use = kps
-                        print("🚀 else: ", len(kps_use))
+                        # print("🚀 else: ", len(kps_use))
 
             # normalize relative to bbox center (recommended)
-            print("🚀 kps_use : ", len(kps_use))
+            # print("🚀 kps_use : ", len(kps_use))
             kps_norm = _normalize_keypoints(kps_use, bbox_xywh, mode=normalize_mode)
-            print("🚀 kps_norm : ", len(kps_norm))
+            # print("🚀 kps_norm : ", len(kps_norm))
 
             # append to buffer
             buffers[tid].append(kps_norm.astype(np.float32))
             last_seen[tid] = kps_norm.copy()
 
             # if buffer is full, return sequence
-            print("🚀 len(buffers[tid])  : ", len(buffers[tid]))
-            print("🚀 seq_len : ", seq_len)
+            print("🚀 len(buffers[tid])  : ", len(buffers[tid]), " ", tid)
+            # print("🚀 seq_len : ", seq_len)
             # if len(buffers[tid]) == seq_len:
             if len(buffers[tid]) == 28:
-                print("🚀 seq_len : ", seq_len)
+                # print("🚀 seq_len : ", seq_len)
                 seq_arr = np.stack(buffers[tid], axis=0)  # (seq_len, num_joints, 3)
                 # Option: you may want to copy then pop left to create sliding windows,
                 # here we perform sliding by popping left once (so next will overlap)
                 # keep last seq_len-1 frames to form sliding window; pop left once
                 # but since deque has maxlen, to slide we pop left here so older frame removed
                 try:
-                    print("🚀 try : ")
+                    # print("🚀 try : ")
                     # produce a copy to avoid mutation
                     ready[tid] = seq_arr.copy()
 
                     # slide window: remove oldest frame so next fill creates a sliding window
                     buffers[tid].popleft()
                 except Exception:
-                    print("🚀 Exception : ")
+                    # print("🚀 Exception : ")
                     # fallback: clear buffer
                     buffers[tid].clear()
 

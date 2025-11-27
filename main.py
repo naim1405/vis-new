@@ -26,20 +26,28 @@ def do_work(cap):
         # 🚀 detections: [[[550.223388671875, 97.72137451171875, 634.3145751953125, 967.6641235351562], 0.933281421661377]]
         # 🚀 detections: [[[x1,y1,w,h], confidence]]
         # print("🚀 detections:", detections)
-        # p2 deep sort tracking returns {id:(x,y,w,h)}
+        # p2 deep sort tracking returns {id:(x1,y1,x2,y2)}
         tracking_data = tracking(detections, frame)
         print("🚀 tracking_data : ", tracking_data)
         # 🚀 tracking_data :  {'1': (578, 100, 1106, 1065)}
+        # Convert from (x1,y1,x2,y2) to (x,y,w,h) for block3
+        tracking_data_xywh = {}
+        for tid, bbox in tracking_data.items():
+            x1, y1, x2, y2 = bbox
+            tracking_data_xywh[tid] = (x1, y1, x2 - x1, y2 - y1)
         # p3 block3 processing
-        input_i = block_process_frame(tracking_data, frame)
+        input_i = block_process_frame(tracking_data_xywh, frame)
+        # print("🚀 input_i : ", len(input_i))
         print("🚀 input_i : ", len(input_i))
-        # model_input.append(input_i)
-        # if len(model_input) >= 30:
-        #     # cal p4
-        #     print("model input ready", model_input)
-        #     normality_result = predict_normality(model_input)
-        #     print("normality_result ", normality_result)
-        #     model_input = []
+        # with open("logs/output_input_i.txt", "a") as f:
+        #     f.write(str(input_i) + "\n")
+        model_input.append(input_i)
+        if len(model_input) >= 30:
+            # cal p4
+            print("model input ready", model_input)
+            normality_result = predict_normality(model_input)
+            print("normality_result ", normality_result)
+            model_input = []
 
 
 do_work(video_cap)
