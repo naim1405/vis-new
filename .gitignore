@@ -1,0 +1,5 @@
+env*
+note/
+__pycache__
+models
+media/
