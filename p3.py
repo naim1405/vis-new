@@ -140,7 +140,7 @@ def block3(
 
         for tid, bbox in id_bbox_map.items():
             _ensure_buffer(tid)
-            print("🚀 buffers : ", len(buffers))
+            # print("🚀 buffers : ", len(buffers))
             crop, orig_bbox = _bbox_to_crop(frame, bbox)  # orig_bbox = (x1,y1,x2,y2)
             x1, y1, x2, y2 = orig_bbox
             w = x2 - x1
@@ -195,7 +195,7 @@ def block3(
             last_seen[tid] = kps_norm.copy()
 
             # if buffer is full, return sequence
-            print("🚀 len(buffers[tid])  : ", len(buffers[tid]), " ", tid)
+            # print("🚀 len(buffers[tid])  : ", len(buffers[tid]), " ", tid)
             # print("🚀 seq_len : ", seq_len)
             # if len(buffers[tid]) == seq_len:
             if len(buffers[tid]) == 28:

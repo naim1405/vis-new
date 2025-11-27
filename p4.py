@@ -37,9 +37,10 @@ class STGCNInference:
             # Load the checkpoint
             checkpoint = torch.load(self.model_path, map_location=self.device)
 
-            print(f"🚀 Checkpoint type: {type(checkpoint)}")
+            # print(f"🚀 Checkpoint type: {type(checkpoint)}")
             if isinstance(checkpoint, dict):
-                print(f"🚀 Checkpoint keys: {checkpoint.keys()}")
+                pass
+                # print(f"🚀 Checkpoint keys: {checkpoint.keys()}")
 
             # Model configuration - inferred from checkpoint structure
             # Checkpoint analysis:
@@ -65,11 +66,11 @@ class STGCNInference:
                 "device": self.device,
             }
 
-            print(
-                f"🚀 Model config: pose_shape={model_config['pose_shape']}, "
-                f"hidden_channels={model_config['hidden_channels']}, K={model_config['K']}, "
-                f"coupling={model_config['flow_coupling']}"
-            )
+            # print(
+            #     f"🚀 Model config: pose_shape={model_config['pose_shape']}, "
+            #     f"hidden_channels={model_config['hidden_channels']}, K={model_config['K']}, "
+            #     f"coupling={model_config['flow_coupling']}"
+            # )
 
             # Create model
             self.model = STG_NF(**model_config)
@@ -81,9 +82,13 @@ class STGCNInference:
                     checkpoint["state_dict"], strict=False
                 )
                 if missing_keys:
-                    print(f"⚠️  Missing keys (will be randomly initialized): {len(missing_keys)}")
+                    print(
+                        f"⚠️  Missing keys (will be randomly initialized): {len(missing_keys)}"
+                    )
                 if unexpected_keys:
-                    print(f"⚠️  Unexpected keys (will be ignored): {len(unexpected_keys)}")
+                    print(
+                        f"⚠️  Unexpected keys (will be ignored): {len(unexpected_keys)}"
+                    )
                 print(
                     f"✓ Model loaded (trained for {checkpoint.get('epoch', 'unknown')} epochs)"
                 )
@@ -92,7 +97,7 @@ class STGCNInference:
 
             # Move model to device FIRST
             self.model.to(self.device)
-            
+
             # Initialize ActNorm layers before setting to eval mode
             # Create dummy input to initialize
             self.model.train()  # Temporarily set to train mode for initialization
@@ -105,7 +110,7 @@ class STGCNInference:
                 print("✓ ActNorm layers initialized")
             except Exception as e:
                 print(f"⚠️  Warning during ActNorm initialization: {e}")
-            
+
             self.model.eval()  # Now set to evaluation mode
 
         except Exception as e:
@@ -144,14 +149,16 @@ class STGCNInference:
     def _predict_single(self, input_data):
         """
         Predict for a single sequence.
-        
+
         Args:
             input_data: numpy array or tensor (seq_len, num_joints, 3)
-            
+
         Returns:
             normality_score: Float
         """
         # Convert to tensor if numpy array
+        print("🚀 input_data : ", input_data)
+        print("🚀 input_data : ", len(input_data))
         if isinstance(input_data, np.ndarray):
             input_tensor = torch.from_numpy(input_data).float()
         else:
@@ -161,7 +168,7 @@ class STGCNInference:
         if input_tensor.dim() == 3:
             input_tensor = input_tensor.unsqueeze(0)  # (1, seq_len, num_joints, 3)
 
-        print(f"🚀 Input tensor shape: {input_tensor.shape}")
+        # print(f"🚀 Input tensor shape: {input_tensor.shape}")
 
         # Transform input from (batch, seq_len, num_joints, 3) to (batch, 2, 24, 18)
         # The model expects: [batch, 2 (x/y), 24 frames, 18 keypoints]
@@ -174,9 +181,7 @@ class STGCNInference:
                 f"⚠️  Warning: Only {seq_len} frames available, need 24. Padding with zeros."
             )
             # Pad with zeros to reach 24 frames
-            padding = torch.zeros(
-                batch_size, 24 - seq_len, input_tensor.shape[2], 3
-            )
+            padding = torch.zeros(batch_size, 24 - seq_len, input_tensor.shape[2], 3)
             input_tensor = torch.cat([input_tensor, padding], dim=1)
         else:
             # Take last 24 frames for temporal continuity
@@ -200,7 +205,7 @@ class STGCNInference:
         # Stack to (batch, 2, 24, 18)
         model_input = torch.stack([x_coords, y_coords], dim=1)
 
-        print(f"🚀 Model input shape: {model_input.shape}")
+        # print(f"🚀 Model input shape: {model_input.shape}")
 
         # Move to device
         model_input = model_input.to(self.device)
