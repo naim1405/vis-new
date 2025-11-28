@@ -27,7 +27,7 @@ close_block3 = b3["close"]
 
 manager = FrameBufferManager(
     pose_model_path=pose_model_path,
-    sequence_length=1,
+    sequence_length=30,
     frame_digits=4,
     device="cpu",
 )
