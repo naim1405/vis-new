@@ -1,7 +1,6 @@
 env*
 note/
 __pycache__
-models
 media/
 logs/
 anomaly_frames
