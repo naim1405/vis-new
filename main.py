@@ -9,8 +9,11 @@ from p2 import tracking
 from p3 import block3
 from p4 import predict_normality
 import numpy as np
+from p3_k import FrameBufferManager
+
 
 video_url = "./media/sample.mp4"
+pose_model_path = "./models/yolov8n-pose.pt"
 
 # Create directories if they don't exist
 os.makedirs("anomaly_frames", exist_ok=True)
@@ -21,6 +24,13 @@ b3 = block3(seq_len=30)
 block_process_frame = b3["process_frame"]
 get_buffer = b3["get_buffer"]
 close_block3 = b3["close"]
+
+manager = FrameBufferManager(
+    pose_model_path=pose_model_path,
+    sequence_length=1,
+    frame_digits=4,
+    device="cpu",
+)
 
 
 def save_np_array_to_file(array, filename):
@@ -66,27 +76,50 @@ def do_work(cap):
         #     x1, y1, x2, y2 = bbox
         #     tracking_data_xywh[tid] = (x1, y1, x2 - x1, y2 - y1)
         # p3 block3 processing
-        ready = block_process_frame(tracking_data, frame)
-        for tid, seq in ready.items():
-            result = predict_normality(seq)
-            print("🚀 result : ", result)
-            # Save frame with anomalous people (score < 0)
-            if result < 0:
-                anomaly_count += 1
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                filename = f"anomaly_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(tid)}.jpg"
-
-                cv2.imwrite(filename, frame)
-                print(f"✅ Saved anomaly frame: {filename}")
-
-            # Save frame with normal people (score >= 0)
-            else:
-                normal_count += 1
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-                filename = f"normal_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(tid)}.jpg"
-
-                cv2.imwrite(filename, frame)
-                print(f"✅ Saved normal frame: {filename}")
+        # ready = block_process_frame(tracking_data, frame)
+        # for tid, seq in ready.items():
+        #     result = predict_normality(seq)
+        #     print("🚀 result : ", result)
+        #     # Save frame with anomalous people (score < 0)
+        #     if result < 0:
+        #         anomaly_count += 1
+        #         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        #         filename = f"anomaly_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(tid)}.jpg"
+        #
+        #         cv2.imwrite(filename, frame)
+        #         print(f"✅ Saved anomaly frame: {filename}")
+        #
+        #     # Save frame with normal people (score >= 0)
+        #     else:
+        #         normal_count += 1
+        #         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        #         filename = f"normal_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(tid)}.jpg"
+        #
+        #         cv2.imwrite(filename, frame)
+        #         print(f"✅ Saved normal frame: {filename}")
+        out, multi = manager.update(frame, tracking_data)
+        if len(out) > 0:
+            print("🚀 out : ", out)
+            # for tid, seq in out.items():
+            #     result = predict_normality(seq)
+            #     print("🚀 result : ", result)
+            #     # Save frame with anomalous people (score < 0)
+            #     if result < 0:
+            #         anomaly_count += 1
+            #         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            #         filename = f"anomaly_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(tid)}.jpg"
+            #
+            #         cv2.imwrite(filename, frame)
+            #         print(f"✅ Saved anomaly frame: {filename}")
+            #
+            #     # Save frame with normal people (score >= 0)
+            #     else:
+            #         normal_count += 1
+            #         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            #         filename = f"normal_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(tid)}.jpg"
+            #
+            #         cv2.imwrite(filename, frame)
+            #         print(f"✅ Saved normal frame: {filename}")
 
     print(
         f"\n📊 Summary: Processed {frame_count} frames, saved {anomaly_count} anomaly frames and {normal_count} normal frames"

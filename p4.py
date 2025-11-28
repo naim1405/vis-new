@@ -158,7 +158,7 @@ class STGCNInference:
         """
         # Convert to tensor if numpy array
         # print("🚀 input_data : ", input_data)
-        print("🚀 model input_data : ", input_data.shape)
+        # print("🚀 model input_data : ", input_data.shape)
         if isinstance(input_data, np.ndarray):
             input_tensor = torch.from_numpy(input_data).float()
         else:
