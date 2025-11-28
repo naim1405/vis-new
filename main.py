@@ -63,46 +63,9 @@ def do_work(cap):
         detections = process_frame(frame)
         if detections is None or len(detections) == 0:
             continue
-        # 🚀 detections: [[[550.223388671875, 97.72137451171875, 634.3145751953125, 967.6641235351562], 0.933281421661377]]
-        # 🚀 detections: [[[x1,y1,w,h], confidence]]
-        # print("🚀 detections:", detections)
         # p2 deep sort tracking returns {id:(x1,y1,x2,y2)}
-        # tracking_data = tracking(detections, frame)
+        tracking_data = tracking(detections, frame)
 
-        # print("🚀 tracking_data : ", tracking_data)
-        # 🚀 tracking_data :  {'1': (578, 100, 1106, 1065)}
-        tracking_data = {"1": detections[0][0]}  # Mock tracking data for testing
-        # print("🚀 tracking_data : ", tracking_data)
-        # tracking_data = np.zeros(feature_count, dtype=np.float32)
-        # tracking_data[: len(_tracking_data["1"])] = _tracking_data["1"][:feature_count]
-        # print("🚀 tracking_data : ", tracking_data)
-        # Convert from (x1,y1,x2,y2) to (x,y,w,h) for block3
-        # tracking_data_xywh = {}
-        # for tid, bbox in tracking_data.items():
-        #     x1, y1, x2, y2 = bbox
-        #     tracking_data_xywh[tid] = (x1, y1, x2 - x1, y2 - y1)
-        # p3 block3 processing
-        # ready = block_process_frame(tracking_data, frame)
-        # for tid, seq in ready.items():
-        #     result = predict_normality(seq)
-        #     print("🚀 result : ", result)
-        #     # Save frame with anomalous people (score < 0)
-        #     if result < 0:
-        #         anomaly_count += 1
-        #         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        #         filename = f"anomaly_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(tid)}.jpg"
-        #
-        #         cv2.imwrite(filename, frame)
-        #         print(f"✅ Saved anomaly frame: {filename}")
-        #
-        #     # Save frame with normal people (score >= 0)
-        #     else:
-        #         normal_count += 1
-        #         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-        #         filename = f"normal_frames/frame_{frame_count:06d}_{timestamp}_ids_{'_'.join(tid)}.jpg"
-        #
-        #         cv2.imwrite(filename, frame)
-        #         print(f"✅ Saved normal frame: {filename}")
         out, multi = manager.update(frame, tracking_data)
         if len(out) > 0:
             results = detector.predict_from_dict(out, scene_id="01", clip_id="0222")
@@ -195,5 +158,10 @@ def do_work(cap):
     )
 
 
-do_work(video_cap)
+# do_work(video_cap)
 
+for i in range(1, 7):
+    video_url = f"./media/sample{i}.mp4"
+    print("🚀 video_url : ", video_url)
+    video_cap = cv2.VideoCapture(video_url)
+    do_work(video_cap)
