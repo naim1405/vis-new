@@ -9,13 +9,15 @@ import numpy as np
 from ultralytics import YOLO
 from datetime import datetime
 
+model_path = "./models/yolov8n.pt"
+
 
 # Process a single frame for person detection (tracking not included)
 def process_frame(
     frame,
 ):
     # frame is actually a picture
-    model = YOLO("yolov8n.pt")
+    model = YOLO(model_path)
     results = model(frame)
     detections = []
 
