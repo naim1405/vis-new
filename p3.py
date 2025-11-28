@@ -14,6 +14,7 @@ def block3(
     coco17_map=None,
     normalize_mode="bbox",
     missing_keypoint_strategy="last",
+    require_all_nonzero=False,
 ):
     # Internal state
     buffers = {}  # track_id -> deque(maxlen=seq_len) of frames (each is np.array(num_joints,3))
@@ -132,8 +133,10 @@ def block3(
         id_bbox_map: dict(track_id -> (x,y,w,h))
         frame: full RGB/BGR image (numpy array, BGR expected)
         Returns:
-          ready_sequences: dict(track_id -> np.array shape (seq_len, num_joints, 3))
-            (only tracks that have just reached seq_len are returned; buffers slide as deque)
+                    ready_sequences: dict(track_id -> np.array shape (seq_len, num_joints, 3))
+                        (only tracks that have just reached seq_len are returned; buffers slide as deque)
+                        If require_all_nonzero=True, returns only when all seq_len frames
+                        in the window are non-zero (missing frames are zero-filled).
         """
         ready = {}
         frame_h, frame_w = frame.shape[:2]
@@ -197,25 +200,33 @@ def block3(
             # if buffer is full, return sequence
             # print("🚀 len(buffers[tid])  : ", len(buffers[tid]), " ", tid)
             # print("🚀 seq_len : ", seq_len)
-            # if len(buffers[tid]) == seq_len:
-            if len(buffers[tid]) == 28:
+            # When buffer reaches configured length, attempt to emit a sequence
+            if len(buffers[tid]) == seq_len:
                 # print("🚀 seq_len : ", seq_len)
                 seq_arr = np.stack(buffers[tid], axis=0)  # (seq_len, num_joints, 3)
                 # Option: you may want to copy then pop left to create sliding windows,
                 # here we perform sliding by popping left once (so next will overlap)
                 # keep last seq_len-1 frames to form sliding window; pop left once
                 # but since deque has maxlen, to slide we pop left here so older frame removed
-                try:
-                    # print("🚀 try : ")
-                    # produce a copy to avoid mutation
-                    ready[tid] = seq_arr.copy()
+                emit_ok = True
+                if require_all_nonzero:
+                    try:
+                        # Frame considered non-zero if any element differs from 0
+                        frame_has_any = np.any(seq_arr != 0, axis=(1, 2))
+                        emit_ok = bool(np.all(frame_has_any))
+                    except Exception:
+                        emit_ok = False
 
-                    # slide window: remove oldest frame so next fill creates a sliding window
-                    buffers[tid].popleft()
-                except Exception:
-                    # print("🚀 Exception : ")
-                    # fallback: clear buffer
-                    buffers[tid].clear()
+                if emit_ok:
+                    try:
+                        # produce a copy to avoid mutation
+                        ready[tid] = seq_arr.copy()
+
+                        # slide window: remove oldest frame so next fill creates a sliding window
+                        buffers[tid].popleft()
+                    except Exception:
+                        # fallback: clear buffer
+                        buffers[tid].clear()
 
         # print("🚀 ready : ", len(ready))
         return ready
