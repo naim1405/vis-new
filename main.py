@@ -10,6 +10,7 @@ from p3 import block3
 from p4 import predict_normality
 import numpy as np
 from p3_k import FrameBufferManager
+from inference_only.json_inference import JSONAnomalyDetector
 
 
 video_url = "./media/sample.mp4"
@@ -30,6 +31,11 @@ manager = FrameBufferManager(
     sequence_length=30,
     frame_digits=4,
     device="cpu",
+)
+
+detector = JSONAnomalyDetector(
+    checkpoint_path="models/stg_nf_trained.pth",  # Use trained checkpoint from Nov25_0118
+    threshold=0.0,  # Adjust based on EER from training
 )
 
 
@@ -99,7 +105,12 @@ def do_work(cap):
         #         print(f"✅ Saved normal frame: {filename}")
         out, multi = manager.update(frame, tracking_data)
         if len(out) > 0:
-            print("🚀 out : ", out)
+            # print("🚀 out : ", len(out), out.keys())
+            # result = predict_normality(out)
+            results = detector.predict_from_dict(out, scene_id="01", clip_id="0222")
+            print("🚀 result : ", results)
+            break
+
             # for tid, seq in out.items():
             #     result = predict_normality(seq)
             #     print("🚀 result : ", result)
@@ -127,32 +138,3 @@ def do_work(cap):
 
 
 do_work(video_cap)
-#
-# # person detection
-# detections = process_frame(frame)
-# border_color = (0, 255, 0)
-#
-# # anomaly detection and logging
-# is_anomaly = anomaly_detection(detections, frame)
-# if is_anomaly:
-#     border_color = (0, 0, 255)
-#     self.anomaly_log.write(
-#         "Anomaly detected at timestamp: {}\n".format(self._timestamp)
-#     )
-#
-# for x, y, w, h in detections:
-#     x, y, w, h = int(x), int(y), int(w), int(h)
-#     cv2.rectangle(frame, (x, y), (x + w, y + h), border_color, 2)
-# # Ensure frame is uint8 numpy array
-# frame_uint8 = np.asarray(frame, dtype=np.uint8)
-#
-# # Convert OpenCV frame (BGR numpy array) to av.VideoFrame
-# video_frame = VideoFrame.from_ndarray(frame_uint8, format="bgr24")
-#
-# # Set timestamp
-# video_frame.pts = self._timestamp
-# video_frame.time_base = Fraction(1, 90000)
-#
-# self._timestamp += 3000  # Increment for ~30fps (90000/30 = 3000)
-#
-# return video_frame
