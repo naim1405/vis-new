@@ -157,8 +157,8 @@ class STGCNInference:
             normality_score: Float
         """
         # Convert to tensor if numpy array
-        print("🚀 input_data : ", input_data)
-        print("🚀 input_data : ", len(input_data))
+        # print("🚀 input_data : ", input_data)
+        print("🚀 model input_data : ", input_data.shape)
         if isinstance(input_data, np.ndarray):
             input_tensor = torch.from_numpy(input_data).float()
         else:

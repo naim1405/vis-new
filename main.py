@@ -1,7 +1,9 @@
 import cv2
 import os
 from datetime import datetime
+from torch.nn import init
 from ultralytics import download
+from ultralytics.models.yolo import model
 from p1 import process_frame
 from p2 import tracking
 from p3 import block3
@@ -21,11 +23,21 @@ get_buffer = b3["get_buffer"]
 close_block3 = b3["close"]
 
 
+def save_np_array_to_file(array, filename):
+    if filename is None:
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+        filename = f"data/{timestamp}.txt"
+    with open(filename, "w") as f:
+        np.set_printoptions(threshold=np.inf, linewidth=np.inf)
+        f.write(np.array2string(array))
+
+
 def do_work(cap):
-    model_input = {}
+    model_input = []
     frame_count = 0
     anomaly_count = 0
     normal_count = 0
+    feature_count = 18
     while True:
         ret, frame = cap.read()
         if not ret or frame is None:
@@ -33,13 +45,21 @@ def do_work(cap):
         frame_count += 1
         # p1 person detection returns list of [[x,y,w,h]]
         detections = process_frame(frame)
+        if detections is None or len(detections) == 0:
+            continue
         # 🚀 detections: [[[550.223388671875, 97.72137451171875, 634.3145751953125, 967.6641235351562], 0.933281421661377]]
         # 🚀 detections: [[[x1,y1,w,h], confidence]]
         # print("🚀 detections:", detections)
         # p2 deep sort tracking returns {id:(x1,y1,x2,y2)}
-        tracking_data = tracking(detections, frame)
+        # tracking_data = tracking(detections, frame)
+
         # print("🚀 tracking_data : ", tracking_data)
         # 🚀 tracking_data :  {'1': (578, 100, 1106, 1065)}
+        tracking_data = {"1": detections[0][0]}  # Mock tracking data for testing
+        # print("🚀 tracking_data : ", tracking_data)
+        # tracking_data = np.zeros(feature_count, dtype=np.float32)
+        # tracking_data[: len(_tracking_data["1"])] = _tracking_data["1"][:feature_count]
+        # print("🚀 tracking_data : ", tracking_data)
         # Convert from (x1,y1,x2,y2) to (x,y,w,h) for block3
         # tracking_data_xywh = {}
         # for tid, bbox in tracking_data.items():
@@ -47,10 +67,32 @@ def do_work(cap):
         #     tracking_data_xywh[tid] = (x1, y1, x2 - x1, y2 - y1)
         # p3 block3 processing
         input_i = block_process_frame(tracking_data, frame)
+        if len(input_i) == 0:
+            print("🔥 None : ")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            filename = f"empty/{timestamp}.jpg"
+            cv2.imwrite(filename, frame)
+        else:
+            print("🌟 OK")
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+            filename = f"ok/{timestamp}.jpg"
+            cv2.imwrite(filename, frame)
+
+            filename = f"data/{timestamp}.txt"
+            # save array to file for debugging
+            save_np_array_to_file(input_i["1"], None)
+            print("🚀 input_i : ", input_i["1"].shape)
+            model_input.append(input_i["1"])
+
         # input_i is a dict: {track_id: np.array(seq_len, num_joints, 3)}
         # print("🚀 input_i : ", len(input_i))
         # print("🚀 input_i : ", len(input_i))
 
+        if len(model_input) >= 20:
+            result = predict_normality(model_input)
+            print("🚀 result : ", result)
+
+        continue
         for pid, tracking_data in input_i.items():
             if pid not in model_input:
                 model_input[pid] = []

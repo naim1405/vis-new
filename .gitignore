@@ -7,3 +7,6 @@ logs/
 anomaly_frames
 normal_frames
 yolo
+data/
+ok/
+empty/
