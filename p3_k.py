@@ -15,6 +15,10 @@ from ultralytics import YOLO  # pip install ultralytics
 import cv2
 import json
 from typing import Dict, Tuple, Any, Optional, List
+import logging
+
+# Suppress YOLO logging
+logging.getLogger("ultralytics").setLevel(logging.ERROR)
 
 
 class FrameBufferManager:
@@ -38,7 +42,7 @@ class FrameBufferManager:
         device: str = "cpu",
     ):
         # load pose model (YOLOv8 pose COCO 17)
-        self.model = YOLO(pose_model_path)
+        self.model = YOLO(pose_model_path, verbose=False)
         # ensure running on given device if supported
         try:
             self.model.to(device)
