@@ -109,7 +109,6 @@ def do_work(cap):
             # result = predict_normality(out)
             results = detector.predict_from_dict(out, scene_id="01", clip_id="0222")
             print("🚀 result : ", results)
-            break
 
             # for tid, seq in out.items():
             #     result = predict_normality(seq)
