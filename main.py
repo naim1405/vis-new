@@ -6,14 +6,14 @@ from ultralytics import download
 from ultralytics.models.yolo import model
 from p1 import process_frame
 from p2 import tracking
-from p3 import block3
+# from p3 import block3
 from p4 import predict_normality
 import numpy as np
 from p3_k import FrameBufferManager
 from inference_only.json_inference import JSONAnomalyDetector
 
 
-video_url = "./media/sample.mp4"
+video_url = "./media/01.mp4"
 pose_model_path = "./models/yolov8n-pose.pt"
 
 # Create directories if they don't exist
@@ -21,10 +21,6 @@ os.makedirs("anomaly_frames", exist_ok=True)
 os.makedirs("ok", exist_ok=True)
 
 video_cap = cv2.VideoCapture(video_url)
-b3 = block3(seq_len=30)
-block_process_frame = b3["process_frame"]
-get_buffer = b3["get_buffer"]
-close_block3 = b3["close"]
 
 manager = FrameBufferManager(
     pose_model_path=pose_model_path,
@@ -49,7 +45,6 @@ def save_np_array_to_file(array, filename):
 
 
 def do_work(cap):
-    model_input = []
     frame_count = 0
     anomaly_count = 0
     normal_count = 0
@@ -59,12 +54,42 @@ def do_work(cap):
         if not ret or frame is None:
             break
         frame_count += 1
+        
+        
+        
+        
         # p1 person detection returns list of [[x,y,w,h]]
         detections = process_frame(frame)
         if detections is None or len(detections) == 0:
             continue
+        
+        #verificaiton of p1
+        
+        # for det  in detections:
+        #     bounding, score = det
+        #     a,b,c,d = bounding
+        #     cv2.rectangle(frame, (int(a), int(b)), (int(a + c), int(b + d)), (0, 255, 0), 2)
+        #     cv2.imshow("Detections", frame)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #     break
+        #verificaiton end 
+        # print(frame_count, "process 1 ended")
+        
+
+
+            
         # p2 deep sort tracking returns {id:(x1,y1,x2,y2)}
         tracking_data = tracking(detections, frame)
+        
+        #verificaiton of p2
+        # print(tracking_data)
+        # for key, (x, y, w, h) in tracking_data.items():
+        # #     cv2.rectangle(frame, (int(x), int(y)), (int(x + w), int(y + h)), (0,255,0), 2)
+        #     cv2.putText(frame, key, (int(x), int(y)-5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
+        # cv2.imshow("Detections", frame)
+        # if cv2.waitKey(1) & 0xFF == ord('q'):
+        #    break       
+       
 
         out, multi = manager.update(frame, tracking_data)
         if len(out) > 0:
@@ -94,8 +119,8 @@ def do_work(cap):
                     x1, y1, x2, y2 = (
                         int(bbox[0]),
                         int(bbox[1]),
-                        int(bbox[2]),
-                        int(bbox[3]),
+                        int(bbox[0]+bbox[2]),
+                        int(bbox[1]+bbox[3]),
                     )
 
                     # Choose color based on classification
@@ -158,10 +183,10 @@ def do_work(cap):
     )
 
 
-# do_work(video_cap)
+do_work(video_cap)
 
-for i in range(1, 7):
-    video_url = f"./media/sample{i}.mp4"
-    print("🚀 video_url : ", video_url)
-    video_cap = cv2.VideoCapture(video_url)
-    do_work(video_cap)
+# for i in range(1, 7):
+#     video_url = f"./media/sample{i}.mp4"
+#     # print("🚀 video_url : ", video_url)
+#     # video_cap = cv2.VideoCapture(video_url)
+#     # do_work(video_cap)

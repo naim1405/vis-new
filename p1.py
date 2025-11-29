@@ -10,14 +10,14 @@ from ultralytics import YOLO
 from datetime import datetime
 
 model_path = "./models/yolov8n.pt"
-
+modelp1 = YOLO(model_path)
 
 # Process a single frame for person detection (tracking not included)
 def process_frame(
     frame,
 ):
     # frame is actually a picture
-    model = YOLO(model_path)
+    model = modelp1
     results = model(frame)
     detections = []
 
@@ -27,7 +27,7 @@ def process_frame(
         cls = int(box.cls)
 
         # class 0 = person in COCO
-        if cls == 0 and conf > 0.6:
+        if cls == 0 and conf > 0.45:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             filename = f"yolo/{timestamp}.jpg"
             cv2.imwrite(filename, frame)

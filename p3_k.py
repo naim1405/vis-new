@@ -38,7 +38,7 @@ class FrameBufferManager:
         pose_model_path: str = model_path,
         sequence_length: int = 1,
         frame_digits: int = 4,
-        crop_padding: float = 0.2,
+        crop_padding: float = 0.01,
         device: str = "cpu",
     ):
         # load pose model (YOLOv8 pose COCO 17)

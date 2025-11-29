@@ -158,9 +158,9 @@ class JSONAnomalyDetector:
 
             # Calculate confidence
             distance = abs(score - self.threshold)
-            if distance > 2.0:
+            if distance < -3.0:
                 confidence = "High"
-            elif distance > 0.5:
+            elif distance < - 2.0 and distance >-2.9:
                 confidence = "Medium"
             else:
                 confidence = "Low"
