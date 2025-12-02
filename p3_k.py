@@ -36,7 +36,7 @@ class FrameBufferManager:
     def __init__(
         self,
         pose_model_path: str = model_path,
-        sequence_length: int = 1,
+        sequence_length: int = 24,
         frame_digits: int = 4,
         crop_padding: float = 0.01,
         device: str = "cpu",
@@ -249,17 +249,33 @@ class FrameBufferManager:
 
             # check if this person's buffer length >= sequence_length
             if len(self.buffer[pid_str]) >= self.sequence_length:
-                # build dict in required format and remove this person from buffer
+
+                # Build candidate sequence
                 seq_dict = {}
-                # take the oldest `sequence_length` entries (they're in order in deque)
                 entries = list(self.buffer[pid_str])[: self.sequence_length]
+
+                all_values = []
                 for fstr, kpf, sc in entries:
                     seq_dict[fstr] = {"keypoints": kpf, "score": sc}
-                # remove those entries from deque
-                # easiest: rotate and pop sequence_length smallest or rebuild deque with remaining tail
-                remaining = list(self.buffer[pid_str])[self.sequence_length :]
+                    all_values.extend(kpf)
+
+                # Count how many values are NULL (== 0.0)
+                zero_count = sum(1 for v in all_values if v == 0.0)
+
+                # YOUR threshold (set XYZ to whatever you want)
+                XYZ = 200
+
+                # Remove entries from buffer no matter what
+                remaining = list(self.buffer[pid_str])[self.sequence_length:]
                 self.buffer[pid_str] = deque(remaining, maxlen=1000)
-                finished[pid_str] = seq_dict
+
+                # Only return sequence if zero_count is acceptable
+                if zero_count <= XYZ:
+                    finished[pid_str] = seq_dict
+                else:
+                    # discard: do NOT include in finished
+                    print(f"Person {pid_str} discarded due to high null count: {zero_count}")
+
 
         # increment frame counter for next call
         self.next_frame_id = frame_id + 1
@@ -291,7 +307,7 @@ if __name__ == "__main__":
     # Example: simulate frames and bbox_map
     manager = FrameBufferManager(
         pose_model_path=model_path,
-        sequence_length=1,
+        sequence_length=24,
         frame_digits=4,
         device="cpu",
     )

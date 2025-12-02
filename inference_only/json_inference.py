@@ -14,10 +14,6 @@ from .utils import gen_clip_seg_data_np, normalize_pose
 
 
 class JSONAnomalyDetector:
-    """
-    Anomaly detector that works directly with AlphaPose JSON files
-    """
-
     def __init__(self, checkpoint_path, threshold=0.0, device=None):
         """
         Args:
@@ -148,7 +144,7 @@ class JSONAnomalyDetector:
                 label=torch.ones(poses_tensor.shape[0]).to(self.device),
                 score=torch.ones(poses_tensor.shape[0]).to(self.device),
             )
-            scores = -nll.cpu().numpy()
+            scores = nll.cpu().numpy()
 
         # Compile results
         results = []
@@ -156,7 +152,7 @@ class JSONAnomalyDetector:
             scene, clip, person_id, start_frame = meta
             is_abnormal = score < self.threshold
 
-            # Calculate confidence
+            # # Calculate confidence
             distance = abs(score - self.threshold)
             if distance < -3.0:
                 confidence = "High"

@@ -9,7 +9,7 @@ import torchreid
 import cv2
 
 tracker = DeepSort(
-    max_age=900, max_iou_distance=0.9,max_cosine_distance=0.7,embedder="torchreid", embedder_model_name="resnet50", half=True
+    max_age=1800, max_iou_distance=0.9,max_cosine_distance=0.7,embedder="torchreid", embedder_model_name="resnet50", half=True
 )
 
 

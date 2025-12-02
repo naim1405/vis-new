@@ -27,7 +27,7 @@ def process_frame(
         cls = int(box.cls)
 
         # class 0 = person in COCO
-        if cls == 0 and conf > 0.45:
+        if cls == 0 and conf > 0.6:
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
             filename = f"yolo/{timestamp}.jpg"
             cv2.imwrite(filename, frame)
@@ -36,3 +36,33 @@ def process_frame(
             )
     # print("🚀 detections : ", detections)
     return detections
+
+video_url = "C:\\Users\\LENOVO\\OneDrive\\Pictures\\strict_mode.mp4"
+
+video_cap = cv2.VideoCapture(video_url)
+while True:
+    ret, frame = video_cap.read()
+    if not ret or frame is None:
+        break
+
+    detections = process_frame(frame)
+
+    for det in detections:
+        bounding, score = det
+        x, y, w, h = bounding
+        cv2.rectangle(
+            frame, (int(x), int(y)), (int(x + w), int(y + h)), (0, 255, 0), 2
+        )
+        cv2.putText(
+            frame,
+            f"{score:.2f}",
+            (int(x), int(y) - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.9,
+            (36, 255, 12),
+            2,
+        )
+
+    cv2.imshow("Detections", frame)
+    if cv2.waitKey(1) & 0xFF == ord("q"):
+        break

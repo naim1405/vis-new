@@ -13,8 +13,7 @@ import numpy as np
 from p3_k import FrameBufferManager
 from inference_only.json_inference import JSONAnomalyDetector
 
-
-video_url = "./media/sample5.mkv"
+video_url = "./media/sample6.mp4"
 pose_model_path = "./models/yolov8n-pose.pt"
 
 # Create directories if they don't exist
@@ -94,15 +93,21 @@ def do_work(cap):
             has_anomaly = False
             frame_with_overlay = frame.copy()
 
+            # if results["score"] == 'nan':
+            #     results["score"] = 100
+
+            # if (results["score"] + 5) * (100 / 7) < 30:
             for result in results:
                 person_id = result["person_id"]
                 score = result["score"]
                 classification = result["classification"]
                 confidence = result["confidence"]
                 is_abnormal = result["is_abnormal"]
-                print("🚀 score : ", score, " ", confidence)
+                score = (score + 5) * (100 / 7)
 
-                if is_abnormal:
+                # print("🚀 score : ", score, " ", confidence)
+
+                if score > 100.2:
                     has_anomaly = True
 
                 # Get person bounding box from tracking_data
@@ -169,18 +174,18 @@ def do_work(cap):
                             2,
                         )
 
-            # Save frame to appropriate folder
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-            if has_anomaly:
-                anomaly_count += 1
-                filename = f"anomaly_frames/frame_{frame_count:06d}_{timestamp}.jpg"
-                cv2.imwrite(filename, frame_with_overlay)
-                print(f"✅ Saved anomaly frame: {filename}")
-            else:
-                normal_count += 1
-                filename = f"ok/frame_{frame_count:06d}_{timestamp}.jpg"
-                cv2.imwrite(filename, frame_with_overlay)
-                print(f"✅ Saved normal frame: {filename}")
+                # Save frame to appropriate folder
+                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
+                if has_anomaly:
+                    anomaly_count += 1
+                    filename = f"anomaly_frames/frame_{frame_count:06d}_{timestamp}.jpg"
+                    cv2.imwrite(filename, frame_with_overlay)
+                    print(f"✅ Saved anomaly frame: {filename}")
+                else:
+                    normal_count += 1
+                    filename = f"ok/frame_{frame_count:06d}_{timestamp}.jpg"
+                    cv2.imwrite(filename, frame_with_overlay)
+                    print(f"✅ Saved normal frame: {filename}")
 
     print(
         f"\n📊 Summary: Processed {frame_count} frames, saved {anomaly_count} anomaly frames and {normal_count} normal frames"
