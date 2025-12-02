@@ -6,6 +6,7 @@ from ultralytics import download
 from ultralytics.models.yolo import model
 from p1 import process_frame
 from p2 import tracking
+
 # from p3 import block3
 from p4 import predict_normality
 import numpy as np
@@ -13,7 +14,7 @@ from p3_k import FrameBufferManager
 from inference_only.json_inference import JSONAnomalyDetector
 
 
-video_url = "./media/01.mp4"
+video_url = "./media/sample5.mkv"
 pose_model_path = "./models/yolov8n-pose.pt"
 
 # Create directories if they don't exist
@@ -54,17 +55,14 @@ def do_work(cap):
         if not ret or frame is None:
             break
         frame_count += 1
-        
-        
-        
-        
+
         # p1 person detection returns list of [[x,y,w,h]]
         detections = process_frame(frame)
         if detections is None or len(detections) == 0:
             continue
-        
-        #verificaiton of p1
-        
+
+        # verificaiton of p1
+
         # for det  in detections:
         #     bounding, score = det
         #     a,b,c,d = bounding
@@ -72,24 +70,20 @@ def do_work(cap):
         #     cv2.imshow("Detections", frame)
         # if cv2.waitKey(1) & 0xFF == ord('q'):
         #     break
-        #verificaiton end 
+        # verificaiton end
         # print(frame_count, "process 1 ended")
-        
 
-
-            
         # p2 deep sort tracking returns {id:(x1,y1,x2,y2)}
         tracking_data = tracking(detections, frame)
-        
-        #verificaiton of p2
+
+        # verificaiton of p2
         # print(tracking_data)
         # for key, (x, y, w, h) in tracking_data.items():
         # #     cv2.rectangle(frame, (int(x), int(y)), (int(x + w), int(y + h)), (0,255,0), 2)
         #     cv2.putText(frame, key, (int(x), int(y)-5), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0,255,0), 2)
         # cv2.imshow("Detections", frame)
         # if cv2.waitKey(1) & 0xFF == ord('q'):
-        #    break       
-       
+        #    break
 
         out, multi = manager.update(frame, tracking_data)
         if len(out) > 0:
@@ -106,6 +100,7 @@ def do_work(cap):
                 classification = result["classification"]
                 confidence = result["confidence"]
                 is_abnormal = result["is_abnormal"]
+                print("🚀 score : ", score, " ", confidence)
 
                 if is_abnormal:
                     has_anomaly = True
@@ -119,8 +114,8 @@ def do_work(cap):
                     x1, y1, x2, y2 = (
                         int(bbox[0]),
                         int(bbox[1]),
-                        int(bbox[0]+bbox[2]),
-                        int(bbox[1]+bbox[3]),
+                        int(bbox[0] + bbox[2]),
+                        int(bbox[1] + bbox[3]),
                     )
 
                     # Choose color based on classification
