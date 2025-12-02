@@ -134,18 +134,27 @@ def do_work(cap):
                         f"Conf: {confidence}",
                     ]
 
-                    # Draw text background and text
-                    y_offset = y1 - 10
+                    # Calculate center position of bounding box
+                    bbox_center_x = (x1 + x2) // 2
+                    bbox_center_y = (y1 + y2) // 2
+                    
+                    # Calculate total height of text block
+                    total_text_height = len(text_lines) * 25
+                    start_y = bbox_center_y - (total_text_height // 2)
+
+                    # Draw text background and text centered in bounding box
                     for i, text in enumerate(text_lines):
-                        text_y = y_offset - (len(text_lines) - i) * 25
+                        text_y = start_y + (i * 25) + 20
                         # Background rectangle
                         (text_w, text_h), _ = cv2.getTextSize(
                             text, cv2.FONT_HERSHEY_SIMPLEX, 0.6, 2
                         )
+                        text_x = bbox_center_x - (text_w // 2)
+                        
                         cv2.rectangle(
                             frame_with_overlay,
-                            (x1, text_y - text_h - 5),
-                            (x1 + text_w + 10, text_y + 5),
+                            (text_x - 5, text_y - text_h - 5),
+                            (text_x + text_w + 5, text_y + 5),
                             color,
                             -1,
                         )
@@ -153,7 +162,7 @@ def do_work(cap):
                         cv2.putText(
                             frame_with_overlay,
                             text,
-                            (x1 + 5, text_y),
+                            (text_x, text_y),
                             cv2.FONT_HERSHEY_SIMPLEX,
                             0.6,
                             (255, 255, 255),
