@@ -250,6 +250,7 @@ class FrameBufferManager:
             # check if this person's buffer length >= sequence_length
             if len(self.buffer[pid_str]) >= self.sequence_length:
 
+
                 # Build candidate sequence
                 seq_dict = {}
                 entries = list(self.buffer[pid_str])[: self.sequence_length]

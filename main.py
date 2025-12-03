@@ -13,7 +13,7 @@ import numpy as np
 from p3_k import FrameBufferManager
 from inference_only.json_inference import JSONAnomalyDetector
 
-video_url = "./media/sample6.mp4"
+video_url = "./media/sample07.mp4"
 pose_model_path = "./models/yolov8n-pose.pt"
 
 # Create directories if they don't exist
