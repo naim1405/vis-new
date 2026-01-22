@@ -9,13 +9,15 @@ import numpy as np
 from ultralytics import YOLO
 from datetime import datetime
 
+model_path = "./models/yolov8n.pt"
+modelp1 = YOLO(model_path)
 
 # Process a single frame for person detection (tracking not included)
 def process_frame(
     frame,
 ):
     # frame is actually a picture
-    model = YOLO("yolov8n.pt")
+    model = modelp1
     results = model(frame)
     detections = []
 
@@ -34,3 +36,33 @@ def process_frame(
             )
     # print("🚀 detections : ", detections)
     return detections
+
+video_url = "C:\\Users\\LENOVO\\OneDrive\\Pictures\\strict_mode.mp4"
+
+video_cap = cv2.VideoCapture(video_url)
+while True:
+    ret, frame = video_cap.read()
+    if not ret or frame is None:
+        break
+
+    detections = process_frame(frame)
+
+    for det in detections:
+        bounding, score = det
+        x, y, w, h = bounding
+        cv2.rectangle(
+            frame, (int(x), int(y)), (int(x + w), int(y + h)), (0, 255, 0), 2
+        )
+        cv2.putText(
+            frame,
+            f"{score:.2f}",
+            (int(x), int(y) - 10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.9,
+            (36, 255, 12),
+            2,
+        )
+
+    cv2.imshow("Detections", frame)
+    if cv2.waitKey(1) & 0xFF == ord("q"):
+        break
